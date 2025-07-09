@@ -1,2 +1,4 @@
 venv/
 pbin/__pycache__/
+poke_etl_project/.tmp_dagster_home*
+poke_etl_project/poke_etl_project/__pycache__/
