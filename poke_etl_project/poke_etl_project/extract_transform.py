@@ -1,28 +1,28 @@
+from sqlalchemy import create_engine
 import requests
-import pandas as pd
 
-def fetch_pokemon_data(limit=151):
-    all_data = []
+def get_all_pokemon_urls():
+    all_urls = []
+    offset = 0
+    limit = 100  # PokéAPI paginates with ?offset=...&limit=...
 
-    for i in range(1, limit + 1):
-        response = requests.get(f"https://pokeapi.co/api/v2/pokemon/{i}")
-        if response.status_code != 200:
-            print(f"Failed to fetch Pokémon {i}")
-            continue
+    while True:
+        url = f"https://pokeapi.co/api/v2/pokemon?offset={offset}&limit={limit}"
+        res = requests.get(url).json()
+        results = res.get("results", [])
+        if not results:
+            break
+        all_urls.extend([r["url"] for r in results])
+        if not res.get("next"):
+            break
+        offset += limit
 
-        data = response.json()
-        pokemon = {
-            "id": data["id"],
-            "name": data["name"],
-            "height": data["height"],
-            "weight": data["weight"],
-            "base_experience": data["base_experience"],
-            "types": ", ".join([t["type"]["name"] for t in data["types"]]),
-            "hp": next(stat["base_stat"] for stat in data["stats"] if stat["stat"]["name"] == "hp"),
-            "attack": next(stat["base_stat"] for stat in data["stats"] if stat["stat"]["name"] == "attack"),
-            "defense": next(stat["base_stat"] for stat in data["stats"] if stat["stat"]["name"] == "defense"),
-        }
-        all_data.append(pokemon)
+    return all_urls
 
-    df = pd.DataFrame(all_data)
-    return df
+def get_pg_engine():
+    return create_engine("postgresql+psycopg2://postgres:postgres@localhost:5432/postgres")
+
+def write_df_to_postgres(df, table_name):
+    engine = get_pg_engine()
+    df.to_sql(table_name, engine, if_exists="replace", index=False)
+    print(f"✅ Loaded {len(df)} rows to table '{table_name}'")
